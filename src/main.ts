@@ -4,12 +4,22 @@ import { CacheService } from './services/cache';
 import { UIBadge } from './ui/badge';
 
 let currentPath = '';
+let isProcessing = false;
 
 async function processPage() {
   const media = TraktService.getCurrentMediaInfo();
   if (!media) {
     UIBadge.removeExistingBadge();
     return;
+  }
+
+  const target = UIBadge.getTargetElement();
+  if (!target) {
+    return; // Wait for target container to render
+  }
+
+  if (document.getElementById('allocine-trakt-rating-badge')) {
+    return; // Badge already rendered
   }
 
   // Check cache first
@@ -19,42 +29,47 @@ async function processPage() {
     return;
   }
 
-  // Show loading state while fetching
+  if (isProcessing) return;
+  isProcessing = true;
+
   UIBadge.showLoading();
 
-  // Fetch rating from AlloCiné
-  const rating = await AlloCineService.fetchRating(media);
-
-  // Store in cache
-  CacheService.set(media.type, media.slug, rating);
-
-  // Render final badge
-  UIBadge.render(rating);
+  try {
+    const rating = await AlloCineService.fetchRating(media);
+    CacheService.set(media.type, media.slug, rating);
+    UIBadge.render(rating);
+  } catch (err) {
+    console.error('[AlloCiné Trakt] Failed fetching rating:', err);
+  } finally {
+    isProcessing = false;
+  }
 }
 
 function handleNavigation() {
   const newPath = window.location.pathname;
-  if (newPath === currentPath) return;
-  currentPath = newPath;
+  if (newPath !== currentPath) {
+    currentPath = newPath;
+    isProcessing = false;
+    UIBadge.removeExistingBadge();
+  }
 
-  // Small delay to allow Trakt DOM to finish rendering on SPA page transition
-  setTimeout(() => {
-    processPage().catch((err) => {
-      console.error('[AlloCiné Trakt] Failed processing page:', err);
-    });
-  }, 300);
+  processPage().catch((err) => {
+    console.error('[AlloCiné Trakt] Failed processing page:', err);
+  });
 }
 
 function init() {
   console.log('[AlloCiné Trakt] Userscript initialized');
-
-  // Initial load
   handleNavigation();
 
-  // Observe URL changes in Trakt SPA
+  // MutationObserver to retry processPage when Svelte renders the DOM components
   const observer = new MutationObserver(() => {
-    if (window.location.pathname !== currentPath) {
-      handleNavigation();
+    if (window.location.pathname.match(/^\/(movies|shows)\/([^/]+)/)) {
+      if (window.location.pathname !== currentPath) {
+        handleNavigation();
+      } else if (!document.getElementById('allocine-trakt-rating-badge')) {
+        processPage().catch(console.error);
+      }
     }
   });
 
@@ -63,13 +78,11 @@ function init() {
     subtree: true,
   });
 
-  // Listen to popstate for browser back/forward navigation
   window.addEventListener('popstate', handleNavigation);
 }
 
-// Start script when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => setTimeout(init, 500));
+  document.addEventListener('DOMContentLoaded', () => setTimeout(init, 300));
 } else {
-  setTimeout(init, 500);
+  setTimeout(init, 300);
 }
