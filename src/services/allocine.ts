@@ -91,7 +91,7 @@ export class AlloCineService {
         });
       });
 
-      // Also check standard href links as fallback
+      // Check standard href links as fallback
       const hrefMatches = Array.from(searchHtml.matchAll(/href="([^"]+)"/g)).map(m => m[1]);
       hrefMatches.forEach(h => {
         if (!decodedUrls.includes(h)) decodedUrls.push(h);
