@@ -77,19 +77,35 @@ export class AlloCineService {
 
       // Extract all ACrL class tokens and decode them
       const classMatches = Array.from(searchHtml.matchAll(/class="([^"]*ACrL[^"]*)"/g)).map(m => m[1]);
-      const decodedUrls: string[] = [];
+      
+      const priorityUrls: string[] = [];
+      const fallbackUrls: string[] = [];
 
       classMatches.forEach(c => {
+        if (c.includes('header-') || c.includes('nav-') || c.includes('footer-')) return;
+
+        const isSearchResultCard = c.includes('meta-title-link') ||
+                                   c.includes('thumbnail-link') ||
+                                   c.includes('thumbnail-container') ||
+                                   c.includes('entity-title-link') ||
+                                   c.includes('card');
+
         const tokens = c.split(/\s+/);
         tokens.forEach(t => {
           if (t.includes('ACrL')) {
             const decoded = this.decodeAlloCineClass(t);
-            if (decoded && !decodedUrls.includes(decoded)) {
-              decodedUrls.push(decoded);
+            if (decoded) {
+              if (isSearchResultCard) {
+                if (!priorityUrls.includes(decoded)) priorityUrls.push(decoded);
+              } else {
+                if (!fallbackUrls.includes(decoded)) fallbackUrls.push(decoded);
+              }
             }
           }
         });
       });
+
+      const decodedUrls = [...priorityUrls, ...fallbackUrls];
 
       // Check standard href links as fallback
       const hrefMatches = Array.from(searchHtml.matchAll(/href="([^"]+)"/g)).map(m => m[1]);
@@ -148,65 +164,52 @@ export class AlloCineService {
     let spectatorRating: number | undefined;
     let title = defaultTitle;
 
-    // Strategy 1: Direct text regex match for Presse and Spectateurs ratings
-    const pressMatch = html.match(/Presse[\s\S]*?stareval-note"[^>]*>([\d,.]+)/i);
-    if (pressMatch) pressRating = this.parseRatingValue(pressMatch[1]);
-
-    const specMatch = html.match(/Spectateurs[\s\S]*?stareval-note"[^>]*>([\d,.]+)/i);
-    if (specMatch) spectatorRating = this.parseRatingValue(specMatch[1]);
-
-    // Strategy 2: DOMParser fallback if available
-    if (typeof DOMParser !== 'undefined') {
+    // Strategy 1: JSON-LD AggregateRating (most accurate for spectator rating)
+    const jsonLdMatches = Array.from(html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi));
+    for (const m of jsonLdMatches) {
       try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        if (pressRating === undefined || spectatorRating === undefined) {
-          const ratingItems = doc.querySelectorAll('.stareval-item, .rating-item, .stareval-note, .rating-holder');
-          ratingItems.forEach((item) => {
-            const text = item.textContent || '';
-            const parentText = item.parentElement?.textContent || '';
-            const fullText = `${text} ${parentText}`.toLowerCase();
-
-            const noteElem = item.querySelector('.stareval-note, .starrating-value, .val') || item;
-            const noteVal = this.parseRatingValue(noteElem.textContent);
-
-            if (noteVal !== undefined) {
-              if (fullText.includes('presse') && pressRating === undefined) {
-                pressRating = noteVal;
-              } else if ((fullText.includes('spectateur') || fullText.includes('spectateurs')) && spectatorRating === undefined) {
-                spectatorRating = noteVal;
-              }
+        const json = JSON.parse(m[1].trim());
+        const items = Array.isArray(json) ? json : [json];
+        for (const item of items) {
+          if (item.name) title = item.name;
+          if (item.aggregateRating && item.aggregateRating.ratingValue) {
+            const val = this.parseRatingValue(item.aggregateRating.ratingValue.toString());
+            if (val !== undefined && spectatorRating === undefined) {
+              spectatorRating = val;
             }
-          });
+          }
         }
-
-        // Check JSON-LD in DOM
-        const jsonLdScripts = doc.querySelectorAll('script[type="application/ld+json"]');
-        jsonLdScripts.forEach((script) => {
-          try {
-            const json = JSON.parse(script.textContent || '{}');
-            const items = Array.isArray(json) ? json : [json];
-            for (const item of items) {
-              if (item.name) title = item.name;
-              if (item.aggregateRating && spectatorRating === undefined) {
-                const agg = item.aggregateRating;
-                const val = this.parseRatingValue(agg.ratingValue?.toString());
-                if (val !== undefined) spectatorRating = val;
-              }
-            }
-          } catch (e) {}
-        });
       } catch (e) {}
     }
 
-    // Strategy 3: JSON-LD fallback via regex
-    if (spectatorRating === undefined) {
-      const jsonLdMatch = html.match(/"aggregateRating":\s*({[^}]+})/);
-      if (jsonLdMatch) {
-        const valMatch = jsonLdMatch[1].match(/"ratingValue":\s*"([\d,.]+)"/);
-        if (valMatch) spectatorRating = this.parseRatingValue(valMatch[1]);
+    // Strategy 2: Scrape header rating-item containers for Presse and Spectateurs
+    const ratingItemBlocks = Array.from(html.matchAll(/<div[^>]*class="[^"]*rating-item[^"]*"[\s\S]*?<\/div>/gi));
+    ratingItemBlocks.forEach(b => {
+      const text = b[0].toLowerCase();
+      const noteMatch = b[0].match(/stareval-note"[^>]*>\s*([\d,.]+)/);
+      if (noteMatch) {
+        const val = this.parseRatingValue(noteMatch[1]);
+        if (val !== undefined) {
+          if (text.includes('presse') && pressRating === undefined) {
+            pressRating = val;
+          }
+          if (text.includes('spectateur') && spectatorRating === undefined) {
+            spectatorRating = val;
+          }
+        }
       }
+    });
+
+    // Strategy 3: Fallback regex for Presse
+    if (pressRating === undefined) {
+      const pressMatch = html.match(/Presse[\s\S]*?stareval-note"[^>]*>\s*([\d,.]+)/i);
+      if (pressMatch) pressRating = this.parseRatingValue(pressMatch[1]);
+    }
+
+    // Strategy 4: Fallback regex for Spectateurs
+    if (spectatorRating === undefined) {
+      const specMatch = html.match(/Spectateurs[\s\S]*?stareval-note"[^>]*>\s*([\d,.]+)/i);
+      if (specMatch) spectatorRating = this.parseRatingValue(specMatch[1]);
     }
 
     return {

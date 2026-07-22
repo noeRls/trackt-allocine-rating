@@ -14,9 +14,25 @@ describe('AlloCineService Tests', () => {
     const result = await AlloCineService.fetchRating(media);
 
     expect(result).not.toBeNull();
+    expect(result?.url).toBe('https://www.allocine.fr/film/fichefilm_gen_cfilm=143692.html');
+    expect(result?.pressRating).toBe(4.1);
+    expect(result?.spectatorRating).toBe(4.5);
+  }, 15000);
+
+  it('should search and extract exact ratings for Matrix Resurrections', async () => {
+    const media: TraktMediaInfo = {
+      type: 'movie',
+      slug: 'matrix-resurrections-2021',
+      title: 'Matrix Resurrections',
+      year: 2021
+    };
+
+    const result = await AlloCineService.fetchRating(media);
+
+    expect(result).not.toBeNull();
     expect(result?.url).toBe('https://www.allocine.fr/film/fichefilm_gen_cfilm=254560.html');
     expect(result?.pressRating).toBe(3.5);
-    expect(result?.spectatorRating).toBe(3.5);
+    expect(result?.spectatorRating).toBe(2.6);
   }, 15000);
 
   it('should search and extract exact ratings for Breaking Bad', async () => {
