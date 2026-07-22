@@ -54,10 +54,14 @@ export class UIBadge {
     container.id = this.CONTAINER_ID;
     container.className = 'allocine-trakt-container';
     container.innerHTML = `
-      <span class="allocine-trakt-badge">AlloCiné</span>
-      <div class="allocine-trakt-loading">
-        <div class="allocine-trakt-spinner"></div>
-        <span>Loading ratings...</span>
+      <div class="allocine-trakt-badge">
+        <div class="allocine-trakt-col">
+          <span class="allocine-trakt-title">Allociné</span>
+          <span class="allocine-trakt-subtitle">Loading</span>
+        </div>
+        <div class="allocine-trakt-loading">
+          <div class="allocine-trakt-spinner"></div>
+        </div>
       </div>
     `;
 
@@ -78,8 +82,12 @@ export class UIBadge {
       container.className = 'allocine-trakt-container';
       container.style.opacity = '0.6';
       container.innerHTML = `
-        <span class="allocine-trakt-badge">AlloCiné</span>
-        <span class="allocine-trakt-label">No ratings found</span>
+        <div class="allocine-trakt-badge">
+          <div class="allocine-trakt-col">
+            <span class="allocine-trakt-title">Allociné</span>
+            <span class="allocine-trakt-subtitle">N/A</span>
+          </div>
+        </div>
       `;
       target.insertAdjacentElement('afterend', container);
       return;
@@ -93,32 +101,31 @@ export class UIBadge {
     container.rel = 'noopener noreferrer';
     container.title = `View "${rating.title}" on AlloCiné`;
 
-    let html = `<span class="allocine-trakt-badge">AlloCiné</span><div class="allocine-trakt-ratings">`;
-
-    const parts: string[] = [];
+    let html = '';
 
     if (rating.pressRating !== undefined) {
-      parts.push(`
-        <div class="allocine-trakt-item">
-          <span class="allocine-trakt-star">★</span>
-          <span class="allocine-trakt-label">Presse</span>
-          <span class="allocine-trakt-score">${rating.pressRating.toFixed(1)}/5</span>
+      html += `
+        <div class="allocine-trakt-badge">
+          <div class="allocine-trakt-col">
+            <span class="allocine-trakt-title">Allociné</span>
+            <span class="allocine-trakt-subtitle">Presse</span>
+          </div>
+          <span class="allocine-trakt-score">${rating.pressRating.toFixed(1)}</span>
         </div>
-      `);
+      `;
     }
 
     if (rating.spectatorRating !== undefined) {
-      parts.push(`
-        <div class="allocine-trakt-item">
-          <span class="allocine-trakt-star">★</span>
-          <span class="allocine-trakt-label">Spectateurs</span>
-          <span class="allocine-trakt-score">${rating.spectatorRating.toFixed(1)}/5</span>
+      html += `
+        <div class="allocine-trakt-badge">
+          <div class="allocine-trakt-col">
+            <span class="allocine-trakt-title">Allociné</span>
+            <span class="allocine-trakt-subtitle">Public</span>
+          </div>
+          <span class="allocine-trakt-score">${rating.spectatorRating.toFixed(1)}</span>
         </div>
-      `);
+      `;
     }
-
-    html += parts.join('<div class="allocine-trakt-divider"></div>');
-    html += `</div>`;
 
     container.innerHTML = html;
     target.insertAdjacentElement('afterend', container);
