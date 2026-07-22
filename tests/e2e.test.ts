@@ -78,7 +78,48 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
 
       // Wait for rating badge
       await page.waitForSelector('#allocine-trakt-rating-badge', { timeout: 15000 });
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(1500);
+
+      // Auto-accept any cookie consent banners or popups
+      try {
+        const cookieSelectors = [
+          '#onetrust-accept-btn-handler',
+          'button:has-text("Accept All")',
+          'button:has-text("Accept")',
+          'button:has-text("Agree")',
+          'button:has-text("I Agree")',
+          'button:has-text("Allow All")',
+          'button[class*="cookie"]',
+          '[id*="cookie"] button',
+          '.qc-cmp2-summary-buttons button'
+        ];
+
+        for (const selector of cookieSelectors) {
+          const btn = page.locator(selector).first();
+          if (await btn.isVisible({ timeout: 1000 }).catch(() => false)) {
+            await btn.click({ force: true }).catch(() => {});
+            await page.waitForTimeout(500);
+            break;
+          }
+        }
+      } catch (e) {}
+
+      // Hide/remove cookie overlays via DOM fallback
+      await page.evaluate(() => {
+        const selectors = [
+          '#onetrust-consent-sdk',
+          '.cookie-banner',
+          '.cookie-consent',
+          '[class*="cookie"]',
+          '[id*="cookie"]',
+          '.qc-cmp2-container'
+        ];
+        selectors.forEach(sel => {
+          document.querySelectorAll(sel).forEach(el => el.remove());
+        });
+      });
+
+      await page.waitForTimeout(500);
 
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
