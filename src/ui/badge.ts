@@ -1,8 +1,10 @@
 import { AlloCineRating } from '../types';
+import allocineIcon from '../../assets/allocine_icon.png';
 import './style.css';
 
 export class UIBadge {
   private static CONTAINER_ID = 'allocine-trakt-rating-badge';
+
 
   /**
    * Find target container on Trakt page to inject our badge into.
@@ -65,17 +67,22 @@ export class UIBadge {
     const target = this.getTargetElement();
     if (!target) return;
 
-    const container = document.createElement('div');
+    const container = document.createElement('rating');
     container.id = this.CONTAINER_ID;
-    container.className = 'allocine-trakt-container';
+    container.className = 'allocine-trakt-rating svelte-n4uq8h';
+    container.setAttribute('data-layout', 'row');
     container.innerHTML = `
-      <div class="allocine-trakt-badge">
-        <div class="allocine-trakt-col">
-          <span class="allocine-trakt-title">Allociné</span>
-          <span class="allocine-trakt-subtitle">Loading</span>
+      <div class="rating-item svelte-n4uq8h has-valid-rating" data-layout="row">
+        <span class="allocine-trakt-sr-only">Allociné</span>
+        <div class="allocine-trakt-icon">
+          <img src="${allocineIcon}" alt="Allociné" width="18" height="18" class="allocine-trakt-icon-img">
         </div>
-        <div class="allocine-trakt-loading">
-          <div class="allocine-trakt-spinner"></div>
+        <div class="rating-info svelte-n4uq8h">
+          <div class="rating-value svelte-n4uq8h">
+            <p class="bold svelte-n4uq8h allocine-trakt-text">
+              <span class="allocine-trakt-subtitle">Loading...</span>
+            </p>
+          </div>
         </div>
       </div>
     `;
@@ -91,16 +98,26 @@ export class UIBadge {
     const target = this.getTargetElement();
     if (!target) return;
 
-    if (!rating || (!rating.pressRating && !rating.spectatorRating)) {
-      const container = document.createElement('div');
-      container.id = this.CONTAINER_ID;
-      container.className = 'allocine-trakt-container';
-      container.style.opacity = '0.6';
+    const isNA = !rating || (rating.pressRating === undefined && rating.spectatorRating === undefined);
+
+    const container = document.createElement('rating');
+    container.id = this.CONTAINER_ID;
+    container.className = 'allocine-trakt-rating svelte-n4uq8h';
+    container.setAttribute('data-layout', 'row');
+
+    if (isNA) {
       container.innerHTML = `
-        <div class="allocine-trakt-badge">
-          <div class="allocine-trakt-col">
-            <span class="allocine-trakt-title">Allociné</span>
-            <span class="allocine-trakt-subtitle">N/A</span>
+        <div class="rating-item svelte-n4uq8h has-valid-rating" data-layout="row" style="opacity: 0.6;">
+          <span class="allocine-trakt-sr-only">Allociné</span>
+          <div class="allocine-trakt-icon">
+            <img src="${allocineIcon}" alt="Allociné" width="18" height="18" class="allocine-trakt-icon-img">
+          </div>
+          <div class="rating-info svelte-n4uq8h">
+            <div class="rating-value svelte-n4uq8h">
+              <p class="bold svelte-n4uq8h allocine-trakt-text">
+                <span class="allocine-trakt-subtitle">N/A</span>
+              </p>
+            </div>
           </div>
         </div>
       `;
@@ -108,41 +125,37 @@ export class UIBadge {
       return;
     }
 
-    const container = document.createElement('a');
-    container.id = this.CONTAINER_ID;
-    container.className = 'allocine-trakt-container';
-    container.href = rating.url;
-    container.target = '_blank';
-    container.rel = 'noopener noreferrer';
-    container.title = `View "${rating.title}" on AlloCiné`;
-
-    let html = '';
+    const parts: string[] = [];
 
     if (rating.pressRating !== undefined) {
-      html += `
-        <div class="allocine-trakt-badge">
-          <div class="allocine-trakt-col">
-            <span class="allocine-trakt-title">Allociné</span>
-            <span class="allocine-trakt-subtitle">Presse</span>
-          </div>
-          <span class="allocine-trakt-score">${rating.pressRating.toFixed(1)}</span>
-        </div>
-      `;
+      parts.push(`<span class="allocine-trakt-score">${rating.pressRating.toFixed(1)}</span> <span class="allocine-trakt-subtitle">Presse</span>`);
     }
 
     if (rating.spectatorRating !== undefined) {
-      html += `
-        <div class="allocine-trakt-badge">
-          <div class="allocine-trakt-col">
-            <span class="allocine-trakt-title">Allociné</span>
-            <span class="allocine-trakt-subtitle">Public</span>
-          </div>
-          <span class="allocine-trakt-score">${rating.spectatorRating.toFixed(1)}</span>
-        </div>
-      `;
+      parts.push(`<span class="allocine-trakt-score">${rating.spectatorRating.toFixed(1)}</span> <span class="allocine-trakt-subtitle">Public</span>`);
     }
 
-    container.innerHTML = html;
+    const contentHtml = parts.join('<span class="allocine-trakt-dot">·</span>');
+
+    container.innerHTML = `
+      <a target="_blank" rel="noopener noreferrer" title="View &quot;${rating.title || 'Movie'}&quot; on AlloCiné" class="allocine-trakt-link" href="${rating.url}">
+        <div class="rating-item svelte-n4uq8h has-valid-rating" data-layout="row">
+          <span class="allocine-trakt-sr-only">Allociné</span>
+          <div class="allocine-trakt-icon">
+            <img src="${allocineIcon}" alt="Allociné" width="18" height="18" class="allocine-trakt-icon-img">
+          </div>
+          <div class="rating-info svelte-n4uq8h">
+            <div class="rating-value svelte-n4uq8h">
+              <p class="bold svelte-n4uq8h allocine-trakt-text">
+                ${contentHtml}
+              </p>
+            </div>
+          </div>
+        </div>
+      </a>
+    `;
+
     this.injectIntoTarget(target, container);
   }
 }
+

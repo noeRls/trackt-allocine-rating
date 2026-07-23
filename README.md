@@ -1,9 +1,8 @@
 # AlloCiné Rating on Trakt
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/noeRls/trackt-allocine-rating?label=Latest%20Release)](https://github.com/noeRls/trackt-allocine-rating/releases/latest)
-
 Injects official **AlloCiné Press & Spectator ratings** directly into [Trakt.tv](https://trakt.tv) movie and TV show pages.
+
+> ⚠️ Disclaimer: This project was vibe coded exclusively and the code has not been reviewed.
 
 ---
 
@@ -35,9 +34,3 @@ Injects official **AlloCiné Press & Spectator ratings** directly into [Trakt.tv
 - 🔗 **Direct Links**: Clicking the rating badge opens the corresponding movie or series page on AlloCiné in a new tab.
 - ⚡ **Smart Local Caching**: Ratings are cached locally for 7 days to eliminate redundant requests and ensure instant page loads.
 - 🔄 **Automatic Updates**: Automatically checks for updates through Tampermonkey / Violentmonkey whenever a new version is released.
-
----
-
-## 📄 License
-
-Distributed under the [MIT License](LICENSE).
