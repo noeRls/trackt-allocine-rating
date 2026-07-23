@@ -9,15 +9,15 @@ export class UIBadge {
    * Target parent wrapper to be 100% safe from Svelte hydration reconciliation.
    */
   public static getTargetElement(): HTMLElement | null {
-    // 1. Try action buttons / media actions bar
-    const actionButtons = document.querySelector('.action-buttons, .media-actions, .trakt-summary-actions-bar, .actions-bar');
-    if (actionButtons) return actionButtons as HTMLElement;
-
-    // 2. Try ratings summary parent wrapper (or the row itself)
+    // 1. Try ratings summary div (.trakt-summary-ratings)
     const summaryRatings = document.querySelector('.trakt-summary-ratings, [class*="trakt-summary-ratings"]');
     if (summaryRatings) {
       return summaryRatings as HTMLElement;
     }
+
+    // 2. Fallback: action buttons / media actions bar
+    const actionButtons = document.querySelector('.action-buttons, .media-actions, .trakt-summary-actions-bar, .actions-bar');
+    if (actionButtons) return actionButtons as HTMLElement;
 
     // 3. Fallback: sidebar stats or sidebar
     const sidebar = document.querySelector('.sidebar .stats, .sidebar-stats, .sidebar');

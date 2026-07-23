@@ -127,11 +127,16 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
 
+      const isInSummaryRatings = await page.evaluate(() => {
+        const badge = document.getElementById('allocine-trakt-rating-badge');
+        return badge ? !!badge.closest('.trakt-summary-ratings, [class*="trakt-summary-ratings"]') : false;
+      });
+
       // Save screenshot
       const screenshotFile = path.join(SCREENSHOT_DIR, `${screenshotName}.png`);
       await page.screenshot({ path: screenshotFile, fullPage: false });
 
-      return cleanText;
+      return { badgeText: cleanText, isInSummaryRatings };
     } finally {
       await page.close();
       await context.close();
@@ -139,16 +144,18 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
   }
 
   it('should inject ratings badge into Inception movie page', async () => {
-    const badgeText = await testTraktPage('https://trakt.tv/movies/inception-2010', 'movie_inception');
+    const { badgeText, isInSummaryRatings } = await testTraktPage('https://trakt.tv/movies/inception-2010', 'movie_inception');
     expect(badgeText).toContain('Allociné');
     expect(badgeText).toContain('Presse');
     expect(badgeText).toContain('Public');
+    expect(isInSummaryRatings).toBe(true);
   }, 60000);
 
   it('should inject ratings badge into Breaking Bad TV show page', async () => {
-    const badgeText = await testTraktPage('https://trakt.tv/shows/breaking-bad', 'show_breaking_bad');
+    const { badgeText, isInSummaryRatings } = await testTraktPage('https://trakt.tv/shows/breaking-bad', 'show_breaking_bad');
     expect(badgeText).toContain('Allociné');
     expect(badgeText).toContain('Presse');
     expect(badgeText).toContain('Public');
+    expect(isInSummaryRatings).toBe(true);
   }, 60000);
 });
