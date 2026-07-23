@@ -2,9 +2,124 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { chromium, request, Browser, APIRequestContext } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
+import { PNG } from 'pngjs';
+import pixelmatch from 'pixelmatch';
+
+declare module 'vitest' {
+  interface Assertion<T = any> {
+    toMatchImageSnapshot(screenshotName: string): Promise<T>;
+  }
+}
 
 const SCRIPT_PATH = path.resolve('dist/allocine-rating-on-trakt.user.js');
 const SCREENSHOT_DIR = path.resolve('screenshots');
+
+expect.extend({
+  async toMatchImageSnapshot(receivedBuffer: Buffer, screenshotName: string) {
+    const baselineFile = path.join(SCREENSHOT_DIR, `${screenshotName}.png`);
+    const diffFile = path.join(SCREENSHOT_DIR, `${screenshotName}-diff.png`);
+    const actualFile = path.join(SCREENSHOT_DIR, `${screenshotName}-actual.png`);
+
+    const updateSnapshot = this.snapshotState?._updateSnapshot;
+    const isUpdateRequested = updateSnapshot === 'all' || updateSnapshot === 'new';
+
+    // If baseline doesn't exist
+    if (!fs.existsSync(baselineFile)) {
+      if (isUpdateRequested) {
+        fs.writeFileSync(baselineFile, receivedBuffer);
+        return {
+          pass: true,
+          message: () => `Baseline snapshot created at ${baselineFile}`,
+        };
+      } else {
+        return {
+          pass: false,
+          message: () => `Baseline screenshot not found at ${baselineFile}. Run with -u / --update to create it.`,
+        };
+      }
+    }
+
+    // Baseline exists, load images
+    let baselineBuffer: Buffer;
+    try {
+      baselineBuffer = fs.readFileSync(baselineFile);
+    } catch (err: any) {
+      return {
+        pass: false,
+        message: () => `Failed to read baseline screenshot at ${baselineFile}: ${err.message}`,
+      };
+    }
+
+    const img1 = PNG.sync.read(receivedBuffer);
+    const img2 = PNG.sync.read(baselineBuffer);
+
+    if (img1.width !== img2.width || img1.height !== img2.height) {
+      if (updateSnapshot === 'all') {
+        fs.writeFileSync(baselineFile, receivedBuffer);
+        if (fs.existsSync(diffFile)) fs.unlinkSync(diffFile);
+        if (fs.existsSync(actualFile)) fs.unlinkSync(actualFile);
+        return {
+          pass: true,
+          message: () => `Baseline screenshot updated at ${baselineFile} (size changed from ${img2.width}x${img2.height} to ${img1.width}x${img1.height})`,
+        };
+      } else {
+        fs.writeFileSync(actualFile, receivedBuffer);
+        return {
+          pass: false,
+          message: () =>
+            `Screenshot size mismatch for ${screenshotName}.\n` +
+            `Expected: ${img2.width}x${img2.height}\n` +
+            `Received: ${img1.width}x${img1.height}\n` +
+            `Actual image saved to: ${actualFile}\n` +
+            `Run with -u / --update to overwrite the baseline.`,
+        };
+      }
+    }
+
+    const { width, height } = img1;
+    const diff = new PNG({ width, height });
+    const numDiffPixels = pixelmatch(
+      img1.data,
+      img2.data,
+      diff.data,
+      width,
+      height,
+      { threshold: 0.1 }
+    );
+
+    if (numDiffPixels > 0) {
+      if (updateSnapshot === 'all') {
+        fs.writeFileSync(baselineFile, receivedBuffer);
+        if (fs.existsSync(diffFile)) fs.unlinkSync(diffFile);
+        if (fs.existsSync(actualFile)) fs.unlinkSync(actualFile);
+        return {
+          pass: true,
+          message: () => `Baseline screenshot updated at ${baselineFile}`,
+        };
+      } else {
+        fs.writeFileSync(diffFile, PNG.sync.write(diff));
+        fs.writeFileSync(actualFile, receivedBuffer);
+        return {
+          pass: false,
+          message: () =>
+            `Visual regression detected for "${screenshotName}": ${numDiffPixels} pixels differed.\n` +
+            `- Baseline: ${baselineFile}\n` +
+            `- Actual: ${actualFile}\n` +
+            `- Diff: ${diffFile}\n` +
+            `Run with -u / --update to update the baseline.`,
+        };
+      }
+    }
+
+    if (fs.existsSync(diffFile)) fs.unlinkSync(diffFile);
+    if (fs.existsSync(actualFile)) fs.unlinkSync(actualFile);
+
+    return {
+      pass: true,
+      message: () => `Screenshots match for ${screenshotName}`,
+    };
+  },
+});
 
 describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
   let browser: Browser;
@@ -123,9 +238,11 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
 
-      // Save screenshot
-      const screenshotFile = path.join(SCREENSHOT_DIR, `${screenshotName}.png`);
-      await page.screenshot({ path: screenshotFile, fullPage: false });
+      // Take screenshot buffer
+      const currentScreenshotBuffer = await page.screenshot({ fullPage: false });
+
+      // Compare with baseline screenshot using the custom image snapshot matcher
+      await expect(currentScreenshotBuffer).toMatchImageSnapshot(screenshotName);
 
       return cleanText;
     } finally {

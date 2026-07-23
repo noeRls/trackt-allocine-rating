@@ -10,10 +10,14 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
     "@types/tampermonkey": "^4.0.10",
     "jsdom": "^27.0.1",
     "node-fetch": "^3.3.2",
+    "pixelmatch": "^7.2.0",
     "playwright": "^1.61.1",
+    "pngjs": "^7.0.0",
     "typescript": "^5.3.3",
     "vite": "^5.1.4",
     "vite-plugin-monkey": "^4.0.0",
