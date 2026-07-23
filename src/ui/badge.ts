@@ -41,12 +41,10 @@ export class UIBadge {
       const drilldownButton = target.querySelector('.trakt-tooltip-trigger, .trakt-ratings-drilldown-button, [data-tooltip-trigger]');
       if (drilldownButton) {
         target.insertBefore(container, drilldownButton);
-      } else {
-        target.appendChild(container);
+        return;
       }
-    } else {
-      target.insertAdjacentElement('afterend', container);
     }
+    target.appendChild(container);
   }
 
   /**
