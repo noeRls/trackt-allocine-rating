@@ -141,15 +141,15 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
 
   it('should inject ratings badge into Inception movie page', async () => {
     const badgeText = await testTraktPage('https://app.trakt.tv/movies/inception-2010', 'movie_inception');
-    expect(badgeText).toContain('AlloCiné');
+    expect(badgeText).toContain('Allociné');
     expect(badgeText).toContain('Presse');
-    expect(badgeText).toContain('Spectateurs');
+    expect(badgeText).toContain('Public');
   }, 45000);
 
   it('should inject ratings badge into Breaking Bad TV show page', async () => {
     const badgeText = await testTraktPage('https://app.trakt.tv/shows/breaking-bad', 'show_breaking_bad');
-    expect(badgeText).toContain('AlloCiné');
+    expect(badgeText).toContain('Allociné');
     expect(badgeText).toContain('Presse');
-    expect(badgeText).toContain('Spectateurs');
+    expect(badgeText).toContain('Public');
   }, 45000);
 });
