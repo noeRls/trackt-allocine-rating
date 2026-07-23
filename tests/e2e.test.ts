@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const SCRIPT_PATH = path.resolve('dist/allocine-rating-on-trakt.user.js');
 const SCREENSHOT_DIR = path.resolve('screenshots');
-const ARTIFACT_DIR = 'C:\\Users\\noeri\\.gemini\\antigravity-ide\\brain\\7bd80cf4-e160-49f7-9c38-11d1ac892de0';
+const ARTIFACT_DIR = process.env.ARTIFACT_DIR;
 
 describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
   let browser: Browser;
@@ -128,7 +128,7 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       const screenshotFile = path.join(SCREENSHOT_DIR, `${screenshotName}.png`);
       await page.screenshot({ path: screenshotFile, fullPage: false });
 
-      if (fs.existsSync(ARTIFACT_DIR)) {
+      if (ARTIFACT_DIR && fs.existsSync(ARTIFACT_DIR)) {
         fs.copyFileSync(screenshotFile, path.join(ARTIFACT_DIR, `${screenshotName}.png`));
       }
 
