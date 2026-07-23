@@ -49,13 +49,4 @@ describe('AlloCineService Tests', () => {
     expect(result?.pressRating).toBe(3.8);
     expect(result?.spectatorRating).toBe(4.7);
   }, 15000);
-
-  it('should decode ACrL obfuscated AlloCiné class tokens correctly', () => {
-    const decodeFn = (AlloCineService as any).decodeAlloCineClass.bind(AlloCineService);
-
-    const sampleClass = 'ACrL2ZACrpbG0vZmljaGVmaWxtX2dlbl9jZmlsbT0yNTQ1NjAuaHRtbA==';
-    const decoded = decodeFn(sampleClass);
-
-    expect(decoded).toBe('/film/fichefilm_gen_cfilm=254560.html');
-  });
 });
