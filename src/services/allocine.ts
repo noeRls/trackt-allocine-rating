@@ -45,106 +45,47 @@ export class AlloCineService {
   }
 
   /**
-   * Decode AlloCiné's obfuscated ACrL class token (e.g. ACrL2ZACrpbG0vZmljaGVmaWxt...)
-   */
-  private static decodeAlloCineClass(classStr: string): string | null {
-    const match = classStr.match(/ACrL([A-Za-z0-9]+)ACrp([A-Za-z0-9+/=]+)/);
-    if (match) {
-      const part1 = match[1];
-      const part2 = match[2];
-      const fullB64 = 'L' + part1 + 'p' + part2;
-      try {
-        const decoded = typeof atob !== 'undefined'
-          ? atob(fullB64)
-          : Buffer.from(fullB64, 'base64').toString('utf-8');
-        if (decoded.startsWith('/') || decoded.startsWith('http')) {
-          return decoded;
-        }
-      } catch (e) {}
-    }
-    return null;
-  }
-
-  /**
    * Search AlloCiné for a movie or TV show.
    */
   public static async fetchRating(media: TraktMediaInfo): Promise<AlloCineRating | null> {
     try {
-      const searchUrl = `https://www.allocine.fr/rechercher/?q=${encodeURIComponent(media.title)}`;
+      const searchUrl = `https://www.allocine.fr/_/autocomplete/${encodeURIComponent(media.title)}`;
 
       console.log(`[AlloCiné Trakt] Searching AlloCiné: ${searchUrl}`);
-      const searchHtml = await this.fetchUrl(searchUrl);
-
-      // Extract all ACrL class tokens and decode them
-      const classMatches = Array.from(searchHtml.matchAll(/class="([^"]*ACrL[^"]*)"/g)).map(m => m[1]);
+      const searchResponse = await this.fetchUrl(searchUrl);
       
-      const priorityUrls: string[] = [];
-      const fallbackUrls: string[] = [];
-
-      classMatches.forEach(c => {
-        if (c.includes('header-') || c.includes('nav-') || c.includes('footer-')) return;
-
-        const isSearchResultCard = c.includes('meta-title-link') ||
-                                   c.includes('thumbnail-link') ||
-                                   c.includes('thumbnail-container') ||
-                                   c.includes('entity-title-link') ||
-                                   c.includes('card');
-
-        const tokens = c.split(/\s+/);
-        tokens.forEach(t => {
-          if (t.includes('ACrL')) {
-            const decoded = this.decodeAlloCineClass(t);
-            if (decoded) {
-              if (isSearchResultCard) {
-                if (!priorityUrls.includes(decoded)) priorityUrls.push(decoded);
-              } else {
-                if (!fallbackUrls.includes(decoded)) fallbackUrls.push(decoded);
-              }
-            }
-          }
-        });
-      });
-
-      const decodedUrls = [...priorityUrls, ...fallbackUrls];
-
-      // Check standard href links as fallback
-      const hrefMatches = Array.from(searchHtml.matchAll(/href="([^"]+)"/g)).map(m => m[1]);
-      hrefMatches.forEach(h => {
-        if (!decodedUrls.includes(h)) decodedUrls.push(h);
-      });
-
-      let targetFicheUrl = '';
-
-      if (media.type === 'movie') {
-        const exactFiche = decodedUrls.find(u => u.includes('/film/fichefilm_gen_cfilm='));
-        if (exactFiche) {
-          targetFicheUrl = exactFiche;
-        } else {
-          const cfilmMatch = decodedUrls.map(u => u.match(/cfilm=(\d+)/)).find(m => m !== null);
-          if (cfilmMatch) {
-            targetFicheUrl = `/film/fichefilm_gen_cfilm=${cfilmMatch[1]}.html`;
-          }
-        }
-      } else {
-        const exactFiche = decodedUrls.find(u => u.includes('/series/ficheserie_gen_cserie='));
-        if (exactFiche) {
-          targetFicheUrl = exactFiche;
-        } else {
-          const cserieMatch = decodedUrls.map(u => u.match(/cserie=(\d+)/)).find(m => m !== null);
-          if (cserieMatch) {
-            targetFicheUrl = `/series/ficheserie_gen_cserie=${cserieMatch[1]}.html`;
-          }
-        }
+      let data;
+      try {
+        data = JSON.parse(searchResponse);
+      } catch (e) {
+        console.error('[AlloCiné Trakt] Failed to parse search JSON:', e);
+        return null;
       }
 
-      if (!targetFicheUrl) {
+      let results: any[] = [];
+      const expectedEntityType = media.type === 'movie' ? 'movie' : 'series';
+
+      if (data.results) {
+        results = data.results.filter((item: any) => item.entity_type === expectedEntityType);
+      } else if (Array.isArray(data)) {
+        results = data.filter((item: any) => item.entity_type === expectedEntityType);
+      }
+
+      if (results.length === 0) {
         console.warn(`[AlloCiné Trakt] No AlloCiné results found for "${media.title}"`);
         return null;
       }
 
-      const ficheUrl = targetFicheUrl.startsWith('http')
-        ? targetFicheUrl
-        : `https://www.allocine.fr${targetFicheUrl}`;
+      const firstResult = results[0];
+      let targetFicheUrl = '';
+
+      if (firstResult.entity_type === 'movie') {
+        targetFicheUrl = `https://www.allocine.fr/film/fichefilm_gen_cfilm=${firstResult.entity_id}.html`;
+      } else {
+        targetFicheUrl = `https://www.allocine.fr/series/ficheserie_gen_cserie=${firstResult.entity_id}.html`;
+      }
+
+      const ficheUrl = targetFicheUrl;
 
       console.log(`[AlloCiné Trakt] Fetching fiche detail: ${ficheUrl}`);
       const ficheHtml = await this.fetchUrl(ficheUrl);
