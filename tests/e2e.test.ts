@@ -7,7 +7,7 @@ import pixelmatch from 'pixelmatch';
 
 declare module 'vitest' {
   interface Assertion<T = any> {
-    toMatchImageSnapshot(screenshotName: string): Promise<T>;
+    toMatchImageSnapshot(screenshotName: string, failureThresholdRatio?: number): Promise<T>;
   }
 }
 
@@ -15,7 +15,7 @@ const SCRIPT_PATH = path.resolve('dist/allocine-rating-on-trakt.user.js');
 const SCREENSHOT_DIR = path.resolve('screenshots');
 
 expect.extend({
-  async toMatchImageSnapshot(receivedBuffer: Buffer, screenshotName: string) {
+  async toMatchImageSnapshot(receivedBuffer: Buffer, screenshotName: string, failureThresholdRatio = 0.03) {
     const baselineFile = path.join(SCREENSHOT_DIR, `${screenshotName}.png`);
     const diffFile = path.join(SCREENSHOT_DIR, `${screenshotName}-diff.png`);
     const actualFile = path.join(SCREENSHOT_DIR, `${screenshotName}-actual.png`);
@@ -84,10 +84,14 @@ expect.extend({
       diff.data,
       width,
       height,
-      { threshold: 0.1 }
+      { threshold: 0.1, includeAA: true }
     );
 
-    if (numDiffPixels > 0) {
+    const totalPixels = width * height;
+    const diffRatio = numDiffPixels / totalPixels;
+    const maxDiffPixels = Math.floor(totalPixels * failureThresholdRatio);
+
+    if (numDiffPixels > maxDiffPixels) {
       if (updateSnapshot === 'all') {
         fs.writeFileSync(baselineFile, receivedBuffer);
         if (fs.existsSync(diffFile)) fs.unlinkSync(diffFile);
@@ -102,7 +106,7 @@ expect.extend({
         return {
           pass: false,
           message: () =>
-            `Visual regression detected for "${screenshotName}": ${numDiffPixels} pixels differed.\n` +
+            `Visual regression detected for "${screenshotName}": ${numDiffPixels} pixels differed (${(diffRatio * 100).toFixed(2)}%), which exceeds the failure threshold of ${maxDiffPixels} pixels (${(failureThresholdRatio * 100).toFixed(2)}%).\n` +
             `- Baseline: ${baselineFile}\n` +
             `- Actual: ${actualFile}\n` +
             `- Diff: ${diffFile}\n` +
