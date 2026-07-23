@@ -10,7 +10,6 @@ Injects official **AlloCiné Press & Spectator ratings** directly into [Trakt.tv
 ## 🚀 Installation
 
 1. Install a Userscript manager extension in your browser:
-   - [Tampermonkey](https://www.tampermonkey.net/)
    - [Violentmonkey](https://violentmonkey.github.io/)
 2. Click the link below to install the userscript:
 
