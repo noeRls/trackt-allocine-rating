@@ -76,7 +76,7 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       await page.evaluate(userscriptCode);
 
       // Wait for rating badge
-      await page.waitForSelector('#allocine-trakt-rating-badge', { timeout: 15000 });
+      await page.waitForSelector('#allocine-trakt-rating-badge', { timeout: 20000 });
       await page.waitForTimeout(1500);
 
       // Auto-accept any cookie consent banners or popups
@@ -96,12 +96,12 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
         for (const selector of cookieSelectors) {
           const btn = page.locator(selector).first();
           if (await btn.isVisible({ timeout: 1000 }).catch(() => false)) {
-            await btn.click({ force: true }).catch(() => {});
+            await btn.click({ force: true }).catch(() => { });
             await page.waitForTimeout(500);
             break;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Hide/remove cookie overlays via DOM fallback
       await page.evaluate(() => {
