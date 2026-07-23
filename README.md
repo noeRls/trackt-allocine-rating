@@ -2,7 +2,7 @@
 
 Injects official **AlloCiné Press & Spectator ratings** directly into [Trakt.tv](https://trakt.tv) movie and TV show pages.
 
-> ⚠️ Disclaimer: This project was vibe coded exclusively and the code has not been reviewed.
+⚠️ Disclaimer: This project was vibe coded exclusively and the code has not been reviewed.
 
 ---
 
