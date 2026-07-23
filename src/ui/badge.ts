@@ -13,10 +13,10 @@ export class UIBadge {
     const actionButtons = document.querySelector('.action-buttons, .media-actions, .trakt-summary-actions-bar, .actions-bar');
     if (actionButtons) return actionButtons as HTMLElement;
 
-    // 2. Try ratings summary parent wrapper
+    // 2. Try ratings summary wrapper
     const summaryRatings = document.querySelector('.trakt-summary-ratings, [class*="trakt-summary-ratings"]');
-    if (summaryRatings && summaryRatings.parentElement) {
-      return summaryRatings.parentElement as HTMLElement;
+    if (summaryRatings) {
+      return summaryRatings as HTMLElement;
     }
 
     // 3. Fallback: sidebar stats or sidebar
@@ -65,7 +65,12 @@ export class UIBadge {
       </div>
     `;
 
-    target.insertAdjacentElement('afterend', container);
+    const arrowButton = target.querySelector('button');
+    if (arrowButton) {
+      target.insertBefore(container, arrowButton);
+    } else {
+      target.appendChild(container);
+    }
   }
 
   /**
@@ -89,7 +94,12 @@ export class UIBadge {
           </div>
         </div>
       `;
-      target.insertAdjacentElement('afterend', container);
+      const arrowButton = target.querySelector('button');
+    if (arrowButton) {
+      target.insertBefore(container, arrowButton);
+    } else {
+      target.appendChild(container);
+    }
       return;
     }
 
@@ -128,6 +138,11 @@ export class UIBadge {
     }
 
     container.innerHTML = html;
-    target.insertAdjacentElement('afterend', container);
+    const arrowButton = target.querySelector('button');
+    if (arrowButton) {
+      target.insertBefore(container, arrowButton);
+    } else {
+      target.appendChild(container);
+    }
   }
 }
