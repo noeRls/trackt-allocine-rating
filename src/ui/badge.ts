@@ -13,10 +13,10 @@ export class UIBadge {
     const actionButtons = document.querySelector('.action-buttons, .media-actions, .trakt-summary-actions-bar, .actions-bar');
     if (actionButtons) return actionButtons as HTMLElement;
 
-    // 2. Try ratings summary parent wrapper
+    // 2. Try ratings summary parent wrapper (or the row itself)
     const summaryRatings = document.querySelector('.trakt-summary-ratings, [class*="trakt-summary-ratings"]');
-    if (summaryRatings && summaryRatings.parentElement) {
-      return summaryRatings.parentElement as HTMLElement;
+    if (summaryRatings) {
+      return summaryRatings as HTMLElement;
     }
 
     // 3. Fallback: sidebar stats or sidebar
@@ -30,6 +30,23 @@ export class UIBadge {
     }
 
     return null;
+  }
+
+  /**
+   * Helper to safely inject the container into the target.
+   * Special case for the .trakt-summary-ratings row to insert before the drilldown arrow.
+   */
+  private static injectIntoTarget(target: HTMLElement, container: HTMLElement): void {
+    if (target.classList.contains('trakt-summary-ratings') || target.className.includes('trakt-summary-ratings')) {
+      const drilldownButton = target.querySelector('.trakt-tooltip-trigger, .trakt-ratings-drilldown-button, [data-tooltip-trigger]');
+      if (drilldownButton) {
+        target.insertBefore(container, drilldownButton);
+      } else {
+        target.appendChild(container);
+      }
+    } else {
+      target.insertAdjacentElement('afterend', container);
+    }
   }
 
   /**
@@ -54,14 +71,18 @@ export class UIBadge {
     container.id = this.CONTAINER_ID;
     container.className = 'allocine-trakt-container';
     container.innerHTML = `
-      <span class="allocine-trakt-badge">AlloCiné</span>
-      <div class="allocine-trakt-loading">
-        <div class="allocine-trakt-spinner"></div>
-        <span>Loading ratings...</span>
+      <div class="allocine-trakt-badge">
+        <div class="allocine-trakt-col">
+          <span class="allocine-trakt-title">Allociné</span>
+          <span class="allocine-trakt-subtitle">Loading</span>
+        </div>
+        <div class="allocine-trakt-loading">
+          <div class="allocine-trakt-spinner"></div>
+        </div>
       </div>
     `;
 
-    target.insertAdjacentElement('afterend', container);
+    this.injectIntoTarget(target, container);
   }
 
   /**
@@ -78,10 +99,14 @@ export class UIBadge {
       container.className = 'allocine-trakt-container';
       container.style.opacity = '0.6';
       container.innerHTML = `
-        <span class="allocine-trakt-badge">AlloCiné</span>
-        <span class="allocine-trakt-label">No ratings found</span>
+        <div class="allocine-trakt-badge">
+          <div class="allocine-trakt-col">
+            <span class="allocine-trakt-title">Allociné</span>
+            <span class="allocine-trakt-subtitle">N/A</span>
+          </div>
+        </div>
       `;
-      target.insertAdjacentElement('afterend', container);
+      this.injectIntoTarget(target, container);
       return;
     }
 
@@ -93,34 +118,33 @@ export class UIBadge {
     container.rel = 'noopener noreferrer';
     container.title = `View "${rating.title}" on AlloCiné`;
 
-    let html = `<span class="allocine-trakt-badge">AlloCiné</span><div class="allocine-trakt-ratings">`;
-
-    const parts: string[] = [];
+    let html = '';
 
     if (rating.pressRating !== undefined) {
-      parts.push(`
-        <div class="allocine-trakt-item">
-          <span class="allocine-trakt-star">★</span>
-          <span class="allocine-trakt-label">Presse</span>
-          <span class="allocine-trakt-score">${rating.pressRating.toFixed(1)}/5</span>
+      html += `
+        <div class="allocine-trakt-badge">
+          <div class="allocine-trakt-col">
+            <span class="allocine-trakt-title">Allociné</span>
+            <span class="allocine-trakt-subtitle">Presse</span>
+          </div>
+          <span class="allocine-trakt-score">${rating.pressRating.toFixed(1)}</span>
         </div>
-      `);
+      `;
     }
 
     if (rating.spectatorRating !== undefined) {
-      parts.push(`
-        <div class="allocine-trakt-item">
-          <span class="allocine-trakt-star">★</span>
-          <span class="allocine-trakt-label">Spectateurs</span>
-          <span class="allocine-trakt-score">${rating.spectatorRating.toFixed(1)}/5</span>
+      html += `
+        <div class="allocine-trakt-badge">
+          <div class="allocine-trakt-col">
+            <span class="allocine-trakt-title">Allociné</span>
+            <span class="allocine-trakt-subtitle">Public</span>
+          </div>
+          <span class="allocine-trakt-score">${rating.spectatorRating.toFixed(1)}</span>
         </div>
-      `);
+      `;
     }
 
-    html += parts.join('<div class="allocine-trakt-divider"></div>');
-    html += `</div>`;
-
     container.innerHTML = html;
-    target.insertAdjacentElement('afterend', container);
+    this.injectIntoTarget(target, container);
   }
 }

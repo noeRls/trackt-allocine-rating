@@ -5,7 +5,6 @@ import path from 'node:path';
 
 const SCRIPT_PATH = path.resolve('dist/allocine-rating-on-trakt.user.js');
 const SCREENSHOT_DIR = path.resolve('screenshots');
-const ARTIFACT_DIR = 'C:\\Users\\noeri\\.gemini\\antigravity-ide\\brain\\7bd80cf4-e160-49f7-9c38-11d1ac892de0';
 
 describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
   let browser: Browser;
@@ -128,10 +127,6 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       const screenshotFile = path.join(SCREENSHOT_DIR, `${screenshotName}.png`);
       await page.screenshot({ path: screenshotFile, fullPage: false });
 
-      if (fs.existsSync(ARTIFACT_DIR)) {
-        fs.copyFileSync(screenshotFile, path.join(ARTIFACT_DIR, `${screenshotName}.png`));
-      }
-
       return cleanText;
     } finally {
       await page.close();
@@ -141,15 +136,15 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
 
   it('should inject ratings badge into Inception movie page', async () => {
     const badgeText = await testTraktPage('https://app.trakt.tv/movies/inception-2010', 'movie_inception');
-    expect(badgeText).toContain('AlloCiné');
+    expect(badgeText).toContain('Allociné');
     expect(badgeText).toContain('Presse');
-    expect(badgeText).toContain('Spectateurs');
+    expect(badgeText).toContain('Public');
   }, 45000);
 
   it('should inject ratings badge into Breaking Bad TV show page', async () => {
     const badgeText = await testTraktPage('https://app.trakt.tv/shows/breaking-bad', 'show_breaking_bad');
-    expect(badgeText).toContain('AlloCiné');
+    expect(badgeText).toContain('Allociné');
     expect(badgeText).toContain('Presse');
-    expect(badgeText).toContain('Spectateurs');
+    expect(badgeText).toContain('Public');
   }, 45000);
 });
