@@ -66,9 +66,9 @@ export class AlloCineService {
       const expectedEntityType = media.type === 'movie' ? 'movie' : 'series';
 
       if (data.results) {
-        results = data.results.filter((item: any) => item.entity_type === expectedEntityType);
+        results = data.results.filter((item: any) => item.entity_type === expectedEntityType && !item.sponsored);
       } else if (Array.isArray(data)) {
-        results = data.filter((item: any) => item.entity_type === expectedEntityType);
+        results = data.filter((item: any) => item.entity_type === expectedEntityType && !item.sponsored);
       }
 
       if (results.length === 0) {
