@@ -62,12 +62,12 @@ function init() {
   console.log('[AlloCiné Trakt] Userscript initialized');
   handleNavigation();
 
-  // MutationObserver to retry processPage when Svelte renders the DOM components
+  // MutationObserver to retry processPage when Svelte renders the DOM components or when SPA navigation occurs
   const observer = new MutationObserver(() => {
-    if (window.location.pathname.match(/^\/(movies|shows)\/([^/]+)/)) {
-      if (window.location.pathname !== currentPath) {
-        handleNavigation();
-      } else if (!document.getElementById('allocine-trakt-rating-badge')) {
+    if (window.location.pathname !== currentPath) {
+      handleNavigation();
+    } else if (window.location.pathname.match(/^\/(movies|shows)\/([^/]+)/)) {
+      if (!document.getElementById('allocine-trakt-rating-badge')) {
         processPage().catch(console.error);
       }
     }
@@ -79,6 +79,13 @@ function init() {
   });
 
   window.addEventListener('popstate', handleNavigation);
+
+  // Modern browser navigation API support
+  if ('navigation' in window && (window as any).navigation) {
+    (window as any).navigation.addEventListener('navigate', () => {
+      setTimeout(handleNavigation, 50);
+    });
+  }
 }
 
 if (document.readyState === 'loading') {

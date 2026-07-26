@@ -16,10 +16,8 @@ export default defineConfig({
         downloadURL: 'https://github.com/noeRls/trackt-allocine-rating/releases/latest/download/allocine-rating-on-trakt.user.js',
         updateURL: 'https://github.com/noeRls/trackt-allocine-rating/releases/latest/download/allocine-rating-on-trakt.user.js',
         match: [
-          'https://trakt.tv/movies/*',
-          'https://trakt.tv/shows/*',
-          'https://*.trakt.tv/movies/*',
-          'https://*.trakt.tv/shows/*'
+          'https://trakt.tv/*',
+          'https://*.trakt.tv/*'
         ],
         icon: 'https://www.allocine.fr/favicon.ico',
         grant: [
