@@ -80,7 +80,7 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
 
     try {
       await page.goto(url, { waitUntil: 'load', timeout: 35000 });
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('networkidle').catch(() => { });
       await page.evaluate(userscriptCode);
 
       // Wait until rating badge is rendered (not in loading state)
@@ -102,12 +102,12 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
         for (const selector of cookieSelectors) {
           const btn = page.locator(selector).first();
           if (await btn.isVisible({ timeout: 1000 }).catch(() => false)) {
-            await btn.click({ force: true }).catch(() => {});
+            await btn.click({ force: true }).catch(() => { });
             await page.waitForTimeout(500);
             break;
           }
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Hide/remove CMP cookie overlays via DOM fallback
       await page.evaluate(() => {

@@ -36,7 +36,9 @@ async function processPage() {
 
   try {
     const rating = await AlloCineService.fetchRating(media);
-    CacheService.set(media.type, media.slug, rating);
+    if (rating !== null) {
+      CacheService.set(media.type, media.slug, rating);
+    }
     UIBadge.render(rating);
   } catch (err) {
     console.error('[AlloCiné Trakt] Failed fetching rating:', err);

@@ -45,30 +45,59 @@ export class AlloCineService {
   }
 
   /**
+   * Fetch French title translation from Wikipedia API as fallback.
+   */
+  private static async getFrenchTitleFallback(title: string): Promise<string | null> {
+    try {
+      const wpUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=fr&redirects=1&titles=${encodeURIComponent(title)}&format=json`;
+      const jsonStr = await this.fetchUrl(wpUrl);
+      const data = JSON.parse(jsonStr);
+      const pages = data.query?.pages;
+      if (pages) {
+        const page = Object.values(pages)[0] as any;
+        const frTitle = page.langlinks?.[0]?.['*'];
+        if (frTitle) {
+          return frTitle.replace(/\s*\([^)]*\)/g, '').trim();
+        }
+      }
+    } catch (err) {
+      console.warn('[AlloCiné Trakt] Failed fetching French title fallback:', err);
+    }
+    return null;
+  }
+
+  /**
    * Search AlloCiné for a movie or TV show.
    */
   public static async fetchRating(media: TraktMediaInfo): Promise<AlloCineRating | null> {
     try {
-      const searchUrl = `https://www.allocine.fr/_/autocomplete/${encodeURIComponent(media.title)}`;
-
-      console.log(`[AlloCiné Trakt] Searching AlloCiné: ${searchUrl}`);
-      const searchResponse = await this.fetchUrl(searchUrl);
-      
-      let data;
-      try {
-        data = JSON.parse(searchResponse);
-      } catch (e) {
-        console.error('[AlloCiné Trakt] Failed to parse search JSON:', e);
-        return null;
-      }
-
-      let results: any[] = [];
       const expectedEntityType = media.type === 'movie' ? 'movie' : 'series';
 
-      if (data.results) {
-        results = data.results.filter((item: any) => item.entity_type === expectedEntityType && item.sponsored !== true);
-      } else if (Array.isArray(data)) {
-        results = data.filter((item: any) => item.entity_type === expectedEntityType && item.sponsored !== true);
+      const searchAndFilter = async (queryTitle: string) => {
+        const searchUrl = `https://www.allocine.fr/_/autocomplete/${encodeURIComponent(queryTitle)}`;
+        console.log(`[AlloCiné Trakt] Searching AlloCiné: ${searchUrl}`);
+        const searchResponse = await this.fetchUrl(searchUrl);
+        let data: any;
+        try {
+          data = JSON.parse(searchResponse);
+        } catch (e) {
+          console.error('[AlloCiné Trakt] Failed to parse search JSON:', e);
+          return [];
+        }
+        let items: any[] = [];
+        if (data.results) items = data.results;
+        else if (Array.isArray(data)) items = data;
+        return items.filter((item: any) => item.entity_type === expectedEntityType && item.sponsored !== true);
+      };
+
+      let results = await searchAndFilter(media.title);
+
+      if (results.length === 0) {
+        const frTitle = await this.getFrenchTitleFallback(media.title);
+        if (frTitle && frTitle.toLowerCase() !== media.title.toLowerCase()) {
+          console.log(`[AlloCiné Trakt] Trying French title fallback: "${frTitle}"`);
+          results = await searchAndFilter(frTitle);
+        }
       }
 
       if (results.length === 0) {

@@ -8,7 +8,7 @@ export class CacheService {
     return `${CACHE_PREFIX}${type}_${slug}`;
   }
 
-  public static get(type: string, slug: string): AlloCineRating | null | undefined {
+  public static get(type: string, slug: string): AlloCineRating | undefined {
     const key = this.getKey(type, slug);
     try {
       let raw: string | null = null;
@@ -26,6 +26,11 @@ export class CacheService {
         return undefined; // Expired
       }
 
+      if (!entry.rating) {
+        this.remove(type, slug);
+        return undefined; // Null/empty rating stored previously
+      }
+
       return entry.rating;
     } catch (e) {
       console.warn('[AlloCiné Trakt] Failed to read cache', e);
@@ -33,7 +38,7 @@ export class CacheService {
     }
   }
 
-  public static set(type: string, slug: string, rating: AlloCineRating | null): void {
+  public static set(type: string, slug: string, rating: AlloCineRating): void {
     const key = this.getKey(type, slug);
     const entry: CacheEntry = {
       rating,

@@ -49,4 +49,20 @@ describe('AlloCineService Tests', () => {
     expect(result?.pressRating).toBe(3.8);
     expect(result?.spectatorRating).toBe(4.7);
   }, 15000);
+
+  it('should search and extract exact ratings for The Boy and the Heron', async () => {
+    const media: TraktMediaInfo = {
+      type: 'movie',
+      slug: 'the-boy-and-the-heron-2023',
+      title: 'The Boy and the Heron',
+      year: 2023
+    };
+
+    const result = await AlloCineService.fetchRating(media);
+
+    expect(result).not.toBeNull();
+    expect(result?.url).toBe('https://www.allocine.fr/film/fichefilm_gen_cfilm=184989.html');
+    expect(result?.pressRating).toBe(4.2);
+    expect(result?.spectatorRating).toBe(3.8);
+  }, 15000);
 });

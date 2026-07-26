@@ -19,6 +19,6 @@ export interface AlloCineRating {
 }
 
 export interface CacheEntry {
-  rating: AlloCineRating | null;
+  rating: AlloCineRating;
   timestamp: number;
 }
