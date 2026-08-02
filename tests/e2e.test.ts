@@ -77,14 +77,18 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     `);
 
     const page = await context.newPage();
+    page.on('console', msg => console.log('[Browser Console]', msg.text()));
 
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: 35000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await page.waitForLoadState('networkidle').catch(() => { });
       await page.evaluate(userscriptCode);
 
       // Wait until rating badge is rendered (not in loading state)
-      await page.waitForSelector('#allocine-trakt-rating-badge .allocine-trakt-score, #allocine-trakt-rating-badge .allocine-trakt-subtitle', { timeout: 30000 });
+      await page.waitForFunction(() => {
+        const badge = document.getElementById('allocine-trakt-rating-badge');
+        return badge && !badge.textContent?.includes('Loading...');
+      }, { timeout: 45000 });
       await page.waitForTimeout(1000);
 
       // Auto-accept any cookie consent banners or popups

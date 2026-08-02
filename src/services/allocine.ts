@@ -25,10 +25,31 @@ export class AlloCineService {
           ontimeout: () => reject(new Error(`Timeout fetching ${url}`))
         });
       } else {
-        fetch(url)
-          .then((res) => res.text())
-          .then(resolve)
-          .catch(reject);
+        const attemptFetch = async (retries: number) => {
+          for (let i = 0; i < retries; i++) {
+            try {
+              const res = await fetch(url, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                  'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+                },
+                signal: AbortSignal.timeout(10000)
+              });
+              if (res.ok) {
+                return await res.text();
+              }
+              if (i === retries - 1) {
+                throw new Error(`HTTP ${res.status} fetching ${url}`);
+              }
+            } catch (err) {
+              if (i === retries - 1) throw err;
+            }
+            await new Promise(r => setTimeout(r, 500));
+          }
+          throw new Error('Fetch failed after retries'); // Should not reach here
+        };
+
+        attemptFetch(3).then(resolve).catch(reject);
       }
     });
   }
