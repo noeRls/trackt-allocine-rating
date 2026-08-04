@@ -79,13 +79,10 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     const page = await context.newPage();
 
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: 35000 });
+      // Changed to 'load' as domcontentloaded can be flaky with userscripts firing late,
+      // and extended timeout to handle trakt's sometimes slow load times.
+      await page.goto(url, { waitUntil: 'load', timeout: 60000 });
       await page.waitForLoadState('networkidle').catch(() => { });
-      await page.evaluate(userscriptCode);
-
-      // Wait until rating badge is rendered (not in loading state)
-      await page.waitForSelector('#allocine-trakt-rating-badge .allocine-trakt-score, #allocine-trakt-rating-badge .allocine-trakt-subtitle', { timeout: 30000 });
-      await page.waitForTimeout(1000);
 
       // Auto-accept any cookie consent banners or popups
       try {
@@ -124,6 +121,20 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
 
       await page.waitForTimeout(500);
 
+      await page.evaluate(userscriptCode);
+
+      // Wait until rating badge is rendered (not in loading state)
+      // Some elements can take a long time to load, so wait until badge is injected
+      // and not showing "Loading..." or give up after a generous timeout
+      await page.waitForFunction(() => {
+        const badge = document.querySelector('#allocine-trakt-rating-badge');
+        if (!badge) return false;
+        const text = badge.textContent || '';
+        return !text.includes('Loading...');
+      }, { timeout: 45000 });
+
+      await page.waitForTimeout(1000);
+
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
 
@@ -149,7 +160,7 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     expect(badgeText).toContain('Presse');
     expect(badgeText).toContain('Public');
     expect(isInSummaryRatings).toBe(true);
-  }, 60000);
+  }, 90000);
 
   it('should inject ratings badge into Breaking Bad TV show page', async () => {
     const { badgeText, isInSummaryRatings } = await testTraktPage('https://trakt.tv/shows/breaking-bad', 'show_breaking_bad');
@@ -157,5 +168,5 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     expect(badgeText).toContain('Presse');
     expect(badgeText).toContain('Public');
     expect(isInSummaryRatings).toBe(true);
-  }, 60000);
+  }, 90000);
 });
