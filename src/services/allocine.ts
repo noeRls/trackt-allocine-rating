@@ -5,32 +5,52 @@ export class AlloCineService {
    * Promise wrapper for GM_xmlhttpRequest
    */
   private static fetchUrl(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      if (typeof GM_xmlhttpRequest !== 'undefined') {
-        GM_xmlhttpRequest({
-          method: 'GET',
-          url,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
-          },
-          onload: (response) => {
-            if (response.status >= 200 && response.status < 400) {
-              resolve(response.responseText);
-            } else {
-              reject(new Error(`HTTP ${response.status} fetching ${url}`));
+    const attemptFetch = (attempt: number): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        if (typeof GM_xmlhttpRequest !== 'undefined') {
+          GM_xmlhttpRequest({
+            method: 'GET',
+            url,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+            },
+            onload: (response) => {
+              if (response.status >= 200 && response.status < 400) {
+                resolve(response.responseText);
+              } else {
+                reject(new Error(`HTTP ${response.status} fetching ${url}`));
+              }
+            },
+            onerror: (err) => reject(err),
+            ontimeout: () => reject(new Error(`Timeout fetching ${url}`))
+          });
+        } else {
+          fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
             }
-          },
-          onerror: (err) => reject(err),
-          ontimeout: () => reject(new Error(`Timeout fetching ${url}`))
-        });
-      } else {
-        fetch(url)
-          .then((res) => res.text())
-          .then(resolve)
-          .catch(reject);
-      }
-    });
+          })
+            .then((res) => {
+              if (res.ok) {
+                return res.text();
+              }
+              throw new Error(`HTTP ${res.status} fetching ${url}`);
+            })
+            .then(resolve)
+            .catch(reject);
+        }
+      }).catch((err) => {
+        if (attempt < 3) {
+          console.warn(`[AlloCiné Trakt] Retry ${attempt} for ${url} due to error:`, err);
+          return new Promise<string>((resolve) => setTimeout(resolve, 500)).then(() => attemptFetch(attempt + 1));
+        }
+        throw err;
+      });
+    };
+
+    return attemptFetch(1);
   }
 
   /**
