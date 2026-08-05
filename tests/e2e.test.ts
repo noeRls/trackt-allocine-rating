@@ -79,15 +79,10 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     const page = await context.newPage();
 
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: 35000 });
+      await page.goto(url, { waitUntil: 'load', timeout: 65000 });
       await page.waitForLoadState('networkidle').catch(() => { });
-      await page.evaluate(userscriptCode);
 
-      // Wait until rating badge is rendered (not in loading state)
-      await page.waitForSelector('#allocine-trakt-rating-badge .allocine-trakt-score, #allocine-trakt-rating-badge .allocine-trakt-subtitle', { timeout: 30000 });
-      await page.waitForTimeout(1000);
-
-      // Auto-accept any cookie consent banners or popups
+      // Auto-accept any cookie consent banners or popups BEFORE rendering user script
       try {
         const cookieSelectors = [
           '#onetrust-accept-btn-handler',
@@ -124,6 +119,43 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
 
       await page.waitForTimeout(500);
 
+      // Retry evaluate in case of navigation interruptions
+      for (let i = 0; i < 3; i++) {
+        try {
+          await page.evaluate(userscriptCode);
+          // Trigger mutation observer explicitly just in case script injected late
+          await page.evaluate(() => {
+            window.dispatchEvent(new Event('popstate'));
+          });
+          break; // Success
+        } catch (e: any) {
+          if (e.message.includes('Execution context was destroyed')) {
+            await page.waitForTimeout(1000);
+            continue;
+          }
+          throw e;
+        }
+      }
+
+      // Wait until rating badge is rendered and is not loading
+      await page.waitForFunction(() => {
+        const badge = document.getElementById('allocine-trakt-rating-badge');
+        if (!badge) return false;
+        // Need to check it's not the loading text, use the actual rendering logic
+        const subtitles = badge.querySelectorAll('.allocine-trakt-subtitle');
+
+        // Edge case for N/A
+        if (badge.textContent?.includes('N/A')) return true;
+
+        if (subtitles.length === 0) return false;
+        for (const el of subtitles) {
+          if (el.textContent === 'Loading...') return false;
+        }
+        return true;
+      }, { timeout: 60000 });
+
+      await page.waitForTimeout(1000);
+
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
 
@@ -149,7 +181,7 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     expect(badgeText).toContain('Presse');
     expect(badgeText).toContain('Public');
     expect(isInSummaryRatings).toBe(true);
-  }, 60000);
+  }, 120000);
 
   it('should inject ratings badge into Breaking Bad TV show page', async () => {
     const { badgeText, isInSummaryRatings } = await testTraktPage('https://trakt.tv/shows/breaking-bad', 'show_breaking_bad');
@@ -157,5 +189,5 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     expect(badgeText).toContain('Presse');
     expect(badgeText).toContain('Public');
     expect(isInSummaryRatings).toBe(true);
-  }, 60000);
+  }, 120000);
 });
