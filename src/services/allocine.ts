@@ -4,33 +4,49 @@ export class AlloCineService {
   /**
    * Promise wrapper for GM_xmlhttpRequest
    */
-  private static fetchUrl(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      if (typeof GM_xmlhttpRequest !== 'undefined') {
-        GM_xmlhttpRequest({
-          method: 'GET',
-          url,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
-          },
-          onload: (response) => {
-            if (response.status >= 200 && response.status < 400) {
-              resolve(response.responseText);
-            } else {
-              reject(new Error(`HTTP ${response.status} fetching ${url}`));
-            }
-          },
-          onerror: (err) => reject(err),
-          ontimeout: () => reject(new Error(`Timeout fetching ${url}`))
+  private static async fetchUrl(url: string, retries = 3): Promise<string> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await new Promise<string>((resolve, reject) => {
+          if (typeof GM_xmlhttpRequest !== 'undefined') {
+            GM_xmlhttpRequest({
+              method: 'GET',
+              url,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+              },
+              onload: (response) => {
+                if (response.status >= 200 && response.status < 400) {
+                  resolve(response.responseText);
+                } else {
+                  reject(new Error(`HTTP ${response.status} fetching ${url}`));
+                }
+              },
+              onerror: (err) => reject(err),
+              ontimeout: () => reject(new Error(`Timeout fetching ${url}`))
+            });
+          } else {
+            fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+              }
+            })
+              .then((res) => {
+                if (res.ok) return res.text();
+                throw new Error(`HTTP ${res.status}`);
+              })
+              .then(resolve)
+              .catch(reject);
+          }
         });
-      } else {
-        fetch(url)
-          .then((res) => res.text())
-          .then(resolve)
-          .catch(reject);
+      } catch (err) {
+        if (attempt === retries) throw err;
+        await new Promise(r => setTimeout(r, 500 * attempt));
       }
-    });
+    }
+    throw new Error(`Failed to fetch ${url}`);
   }
 
   /**
