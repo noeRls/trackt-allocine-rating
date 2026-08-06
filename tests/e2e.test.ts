@@ -81,13 +81,8 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     try {
       await page.goto(url, { waitUntil: 'load', timeout: 35000 });
       await page.waitForLoadState('networkidle').catch(() => { });
-      await page.evaluate(userscriptCode);
 
-      // Wait until rating badge is rendered (not in loading state)
-      await page.waitForSelector('#allocine-trakt-rating-badge .allocine-trakt-score, #allocine-trakt-rating-badge .allocine-trakt-subtitle', { timeout: 30000 });
-      await page.waitForTimeout(1000);
-
-      // Auto-accept any cookie consent banners or popups
+      // Auto-accept any cookie consent banners or popups BEFORE injecting
       try {
         const cookieSelectors = [
           '#onetrust-accept-btn-handler',
@@ -123,6 +118,32 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       });
 
       await page.waitForTimeout(500);
+
+      // Inject userscript with retry
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await page.evaluate(userscriptCode);
+          break;
+        } catch (e) {
+          if (attempt === 3) throw e;
+          await page.waitForTimeout(1000);
+        }
+      }
+
+      // Dispatch popstate event to manually trigger mutation observers
+      await page.evaluate(() => {
+        window.dispatchEvent(new Event('popstate'));
+      });
+
+      // Wait until rating badge is rendered (not in loading state)
+      await page.waitForFunction(() => {
+        const el = document.getElementById('allocine-trakt-rating-badge');
+        if (!el) return false;
+        const text = el.textContent || '';
+        return text.includes('Allociné') && !text.includes('Loading') && !text.includes('Chargement') && !text.includes('N/A');
+      }, { timeout: 60000 });
+
+      await page.waitForTimeout(1000);
 
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
