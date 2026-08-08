@@ -79,15 +79,12 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
     const page = await context.newPage();
 
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: 35000 });
+      await page.goto(url, { waitUntil: 'load', timeout: 60000 });
       await page.waitForLoadState('networkidle').catch(() => { });
-      await page.evaluate(userscriptCode);
+      await page.waitForTimeout(2000);
 
-      // Wait until rating badge is rendered (not in loading state)
-      await page.waitForSelector('#allocine-trakt-rating-badge .allocine-trakt-score, #allocine-trakt-rating-badge .allocine-trakt-subtitle', { timeout: 30000 });
-      await page.waitForTimeout(1000);
-
-      // Auto-accept any cookie consent banners or popups
+      // Auto-accept any cookie consent banners or popups BEFORE injecting script
+      // to avoid navigation destroying the context
       try {
         const cookieSelectors = [
           '#onetrust-accept-btn-handler',
@@ -122,7 +119,31 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
         });
       });
 
-      await page.waitForTimeout(500);
+      // Wrap page.evaluate for userscript injection in a retry block
+      for (let i = 0; i < 3; i++) {
+        try {
+          await page.evaluate(userscriptCode);
+          break;
+        } catch (e) {
+          if (i === 2) throw e;
+          await page.waitForTimeout(1000);
+        }
+      }
+
+      // Dispatch popstate to manually trigger mutation observers
+      await page.evaluate(() => {
+        window.dispatchEvent(new Event('popstate'));
+      });
+
+      // Wait until rating badge is rendered and not loading
+      await page.waitForFunction(() => {
+        const badge = document.getElementById('allocine-trakt-rating-badge');
+        if (!badge) return false;
+        const text = badge.textContent || '';
+        return !text.includes('Loading') && !text.includes('Chargement') && !text.includes('N/A') && text.includes('Allociné');
+      }, { timeout: 60000 });
+
+      await page.waitForTimeout(1000);
 
       const badgeText = await page.textContent('#allocine-trakt-rating-badge');
       const cleanText = badgeText?.replace(/\s+/g, ' ').trim() || '';
