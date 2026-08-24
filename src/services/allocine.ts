@@ -4,16 +4,19 @@ export class AlloCineService {
   /**
    * Promise wrapper for GM_xmlhttpRequest
    */
-  private static fetchUrl(url: string): Promise<string> {
+  private static fetchUrl(url: string, customHeaders?: Record<string, string>): Promise<string> {
     return new Promise((resolve, reject) => {
+      const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        ...customHeaders
+      };
+
       if (typeof GM_xmlhttpRequest !== 'undefined') {
         GM_xmlhttpRequest({
           method: 'GET',
           url,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
-          },
+          headers,
           onload: (response) => {
             if (response.status >= 200 && response.status < 400) {
               resolve(response.responseText);
@@ -25,7 +28,7 @@ export class AlloCineService {
           ontimeout: () => reject(new Error(`Timeout fetching ${url}`))
         });
       } else {
-        fetch(url)
+        fetch(url, { headers })
           .then((res) => res.text())
           .then(resolve)
           .catch(reject);
@@ -50,7 +53,9 @@ export class AlloCineService {
   private static async getFrenchTitleFallback(title: string): Promise<string | null> {
     try {
       const wpUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=fr&redirects=1&titles=${encodeURIComponent(title)}&format=json`;
-      const jsonStr = await this.fetchUrl(wpUrl);
+      const jsonStr = await this.fetchUrl(wpUrl, {
+        'User-Agent': 'TraktAllocineUserscript/1.0.3 (https://github.com/NoeRls/allocine-rating-on-trakt)'
+      });
       const data = JSON.parse(jsonStr);
       const pages = data.query?.pages;
       if (pages) {
