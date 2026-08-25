@@ -107,17 +107,21 @@ describe('Trakt.tv AlloCiné Userscript E2E Tests', () => {
       } catch (e) { }
 
       // Hide/remove CMP cookie overlays via DOM fallback
-      await page.evaluate(() => {
-        const selectors = [
-          '#onetrust-consent-sdk',
-          '.cookie-banner',
-          '.cookie-consent',
-          '.qc-cmp2-container'
-        ];
-        selectors.forEach(sel => {
-          document.querySelectorAll(sel).forEach(el => el.remove());
+      try {
+        await page.evaluate(() => {
+          const selectors = [
+            '#onetrust-consent-sdk',
+            '.cookie-banner',
+            '.cookie-consent',
+            '.qc-cmp2-container'
+          ];
+          selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => el.remove());
+          });
         });
-      });
+      } catch (e) {
+        // Ignore "Execution context was destroyed" errors during cleanup
+      }
 
       // Wrap page.evaluate for userscript injection in a retry block
       for (let i = 0; i < 3; i++) {
